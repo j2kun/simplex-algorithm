@@ -68,6 +68,9 @@ def transpose(A):
 def isPivotCol(col):
    return (len([c for c in col if c == 0]) == len(col) - 1) and sum(col) == 1
 
+def variableValueForPivotColumn(tableau, column):
+   pivotRow = [i for (i, x) in enumerate(column) if x == 1][0]
+   return tableau[pivotRow][-1]
 
 # assume the last m columns of A are the slack variables; the initial basis is
 # the set of slack variables
@@ -81,7 +84,8 @@ def primalSolution(tableau):
    # the pivot columns denote which variables are used
    columns = transpose(tableau)
    indices = [j for j, col in enumerate(columns[:-1]) if isPivotCol(col)]
-   return list(zip(indices, columns[-1]))
+   return [(colIndex, variableValueForPivotColumn(tableau, columns[colIndex]))
+            for colIndex in indices]
 
 
 def objectiveValue(tableau):
@@ -103,8 +107,9 @@ def moreThanOneMin(L):
 
 
 def findPivotIndex(tableau):
-   # pick first nonzero index of the last row
-   column = [i for i,x in enumerate(tableau[-1][:-1]) if x > 0][0]
+   # pick minimum positive index of the last row
+   column_choices = [(i,x) for (i,x) in enumerate(tableau[-1][:-1]) if x > 0]
+   column = min(column_choices, key=lambda a: a[1])[0]
 
    # check if unbounded
    if all(row[column] <= 0 for row in tableau):
@@ -147,23 +152,35 @@ def pivotAbout(tableau, pivot):
 '''
 def simplex(c, A, b):
    tableau = initialTableau(c, A, b)
+   print("Initial tableau:")
+   for row in tableau:
+      print(row)
+   print()
 
    while canImprove(tableau):
       pivot = findPivotIndex(tableau)
+      print("Next pivot index is=%d,%d \n" % pivot)
       pivotAbout(tableau, pivot)
+      print("Tableau after pivot:")
+      for row in tableau:
+         print(row)
+      print()
 
    return tableau, primalSolution(tableau), objectiveValue(tableau)
 
 
 if __name__ == "__main__":
-   c = [3, 2]
-   A = [[1,2], [1,-1]]
-   b = [4, 1]
+   c = [300, 250, 450]
+   A = [[15, 20, 25], [35, 60, 60], [20, 30, 25], [0, 250, 0]]
+   b = [1200, 3000, 1500, 500]
 
    # add slack variables by hand
-   A[0] += [1,0]
-   A[1] += [0,1]
-   c += [0,0]
+   A[0] += [1,0,0,0]
+   A[1] += [0,1,0,0]
+   A[2] += [0,0,1,0]
+   A[3] += [0,0,0,-1]
+   c += [0,0,0,0]
 
    t, s, v = simplex(c, A, b)
-
+   print(s)
+   print(v)
